@@ -5,9 +5,19 @@ var is_attacking = false
 
 #vvvvv Changable Variables vvvvv
 var can_fire = true
-var rate_of_fire = 0.1
+var rate_of_fire = 0.25
 
+enum MovementState {IDLE, RUN, JUMP, DASH, WALL_SLIDE, HOVER}
+enum WeaponType {DEFAULT, SKILL}
+enum SkillType {SKILL_1, SKILL_2, SKILL_3}
 
+var entity_name = "Claire"
+var movement_names =  ["Idle", "Run", "Jump", "Dash", "Wallslide", "Hover"]
+var weapon_names = ["Default", "Skill"]
+var skill_names = ["Unga", "Bunga", "E"]
+var movement_state = MovementState.IDLE
+var weapon_type = WeaponType.DEFAULT
+var skill_type = null
 
 #vvvv UPDATE Code vvvvv
 func _physics_process(_delta: float) -> void:
@@ -19,34 +29,35 @@ func _physics_process(_delta: float) -> void:
 
 
 #vvvvvv TestProjectile Code vvvvvv
-const testprojectile = preload("res://Projectile.tscn")
-
+const test_projectile = preload("res://Projectile.tscn")
 
 func _process(_delta):
 		SkillLoop()
 		change_animation()
+		if Input.is_action_just_pressed("Quit"):
+			get_tree().quit()
 
 func SkillLoop():
-	if Input.is_action_pressed("Shoot") and can_fire == true:
-		movement_state = MovementState.SHOOT
+	if Input.is_action_pressed("Shoot") and can_fire:
 		can_fire = false
-		var testprojectile_instance = testprojectile.instance()
-		testprojectile_instance.position = $BulletSpawnR.global_position
-		if facing_left:
-			testprojectile_instance.direction = -1
-			testprojectile_instance.position = $BulletSpawnL.global_position
-		get_parent().add_child(testprojectile_instance)
-		yield(get_tree().create_timer(rate_of_fire), "timeout")
+		is_attacking = true
+		change_animation()
 		can_fire = true
+	else:
+		is_attacking = false
 
-
-
-func fire_lock(fire):
-	can_fire = fire
+func shoot_gun():
+	var test_projectile_instance = test_projectile.instance()
+	test_projectile_instance.position = $BulletSpawnR.global_position
+	if facing_left:
+		test_projectile_instance.direction = -1
+		test_projectile_instance.position = $BulletSpawnL.global_position
+	get_parent().add_child(test_projectile_instance)
 
 #vvvvv Movement Code vvvvv
 func get_direction() -> Vector2:
-	movement_state = MovementState.IDLE
+	if not Input.is_action_pressed("Shoot"):
+		movement_state = MovementState.IDLE
 	var direction = Vector2(
 			Input.get_action_strength("Move_right") - Input.get_action_strength("Move_left"),
 			-1.0 if Input.is_action_just_pressed("Jump") and is_on_floor() else 1.0
@@ -64,30 +75,28 @@ func get_direction() -> Vector2:
 
 
 
-var entity_name = "Claire"
-enum MovementState {IDLE, RUN, JUMP, SHOOT}
-enum WeaponType {DEFAULT, GUN, SWORD}
-var movement_names =  ["Idle", "Run", "Jump", "Shoot"]
-var weapon_names = ["Default"]
-var movement_state = MovementState.IDLE
-var weapon_type = WeaponType.DEFAULT
-
 func change_animation(animation_name = null) :
 	var animation_player_node = get_node("/root/Test Level Temp/TileMap/Player/AnimationPlayer") # <<<Really Important
 	var movement_name = movement_names [movement_state]
-	var attack_name = "Shoot" if is_attacking else ""
+	var attack_name = "Attack" if is_attacking else ""
 	var weapon_name = weapon_names[weapon_type]
+	var skill_name = "" if skill_type == null else skill_names[skill_type]
 	var direction_name = "L" if facing_left else "R"
 	var all_names = [
 		entity_name,
 		movement_name,
 		attack_name,
 		weapon_name,
+		skill_name,
 		direction_name
 	]
 	
+	# ClaireIdleAttackDefault_R
+	# ClaireRunAttackDefault_R
+	# ClaireRunDefault_R
+	
 	var current_animation_name = animation_player_node.current_animation
-	var next_animation_name = animation_name if animation_name else "%s%s%s%s_%s" % all_names
+	var next_animation_name = animation_name if animation_name else "%s%s%s%s%s_%s" % all_names
 	if animation_player_node.has_animation(next_animation_name) :
 		if current_animation_name == next_animation_name and animation_player_node.is_playing():
 			pass

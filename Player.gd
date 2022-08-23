@@ -1,7 +1,12 @@
 extends Actor
 
+#vvvvvv TestProjectile Code vvvvvv
+const test_projectile = preload("res://Projectile.tscn")
+
 var facing_left = false
 var is_attacking = false
+var max_number_of_jumps = 3
+var number_of_jumps = max_number_of_jumps
 
 #vvvvv Changable Variables vvvvv
 var can_fire = true
@@ -20,64 +25,72 @@ var weapon_type = WeaponType.DEFAULT
 var skill_type = null
 
 #vvvv UPDATE Code vvvvv
-func _physics_process(_delta: float) -> void:
-	var is_jump_interrupted: = Input.is_action_just_released("Jump") and _velocity.y < 0.0
-	var direction: = get_direction()
+func _process(delta):
+	handle_special_actions(delta)
+	handle_attacking()
+	handle_movement()
+	handle_other_input()
+	change_animation()
 
-	_velocity = calculate_move_velocity(_velocity, direction, speed, is_jump_interrupted) 
-	_velocity = move_and_slide(_velocity, FLOOR_NORMAL)
+func jump(delta):
+	if number_of_jumps > 0:
+		movement_state = MovementState.JUMP
+		velocity.y = 0
+		velocity.y -= speed.y
+		number_of_jumps -= 1
 
+func set_can_fire(enabled):
+	can_fire = enabled
 
-#vvvvvv TestProjectile Code vvvvvv
-const test_projectile = preload("res://Projectile.tscn")
-
-func _process(_delta):
-		SkillLoop()
-		change_animation()
-		if Input.is_action_just_pressed("Quit"):
-			get_tree().quit()
-
-func SkillLoop():
-	if Input.is_action_pressed("Shoot") and can_fire:
-		can_fire = false
+func handle_attacking():
+	if Input.is_action_pressed("Shoot"):
 		is_attacking = true
-		change_animation()
-		can_fire = true
+		if can_fire:
+			can_fire = false
+			var attack_timer = Timer.new()
+			attack_timer.one_shot = true
+			attack_timer.wait_time = rate_of_fire
+			attack_timer.connect("timeout", self, "set_can_fire", [true])
+			add_child(attack_timer)
+			attack_timer.start()
 	else:
 		is_attacking = false
 
+func handle_other_input():
+	if Input.is_action_just_pressed("Quit"):
+		get_tree().quit()
+		
+func handle_special_actions(delta):
+	if is_on_floor():
+		if movement_state == MovementState.JUMP:
+			movement_state = MovementState.IDLE
+		number_of_jumps = max_number_of_jumps
+	if Input.is_action_just_pressed("Jump"):
+		jump(delta)
+
 func shoot_gun():
+	var spawn_point = $BulletSpawnL if facing_left else $BulletSpawnR
 	var test_projectile_instance = test_projectile.instance()
-	test_projectile_instance.position = $BulletSpawnR.global_position
-	if facing_left:
-		test_projectile_instance.direction = -1
-		test_projectile_instance.position = $BulletSpawnL.global_position
+	test_projectile_instance.direction = -1 if facing_left else 1
+	test_projectile_instance.position = spawn_point.global_position
 	get_parent().add_child(test_projectile_instance)
 
 #vvvvv Movement Code vvvvv
-func get_direction() -> Vector2:
-	if not Input.is_action_pressed("Shoot"):
+func handle_movement():
+	var directionality = 0
+	if Input.is_action_pressed("Move_left") or Input.is_action_pressed("Move_right"):
+		movement_state = MovementState.RUN
+		facing_left = Input.is_action_pressed("Move_left")
+		directionality = -1 if facing_left else 1
+	
+	if directionality == 0 and movement_state == MovementState.RUN:
 		movement_state = MovementState.IDLE
-	var direction = Vector2(
-			Input.get_action_strength("Move_right") - Input.get_action_strength("Move_left"),
-			-1.0 if Input.is_action_just_pressed("Jump") and is_on_floor() else 1.0
-		)
-	if Input.is_action_pressed("Move_left"):
-		facing_left = true
-		direction.x = -1
-		movement_state = MovementState.RUN
-	if Input.is_action_pressed("Move_right"):
-		facing_left = false
-		direction.x = 1
-		movement_state = MovementState.RUN
-	return direction
-
-
-
+	
+	velocity.x = lerp(velocity.x, speed.x * directionality, 0.25)
 
 func change_animation(animation_name = null) :
 	var animation_player_node = get_node("/root/Test Level Temp/TileMap/Player/AnimationPlayer") # <<<Really Important
-	var movement_name = movement_names [movement_state]
+	var movement_name = movement_names[movement_state]
 	var attack_name = "Attack" if is_attacking else ""
 	var weapon_name = weapon_names[weapon_type]
 	var skill_name = "" if skill_type == null else skill_names[skill_type]
@@ -90,11 +103,7 @@ func change_animation(animation_name = null) :
 		skill_name,
 		direction_name
 	]
-	
-	# ClaireIdleAttackDefault_R
-	# ClaireRunAttackDefault_R
-	# ClaireRunDefault_R
-	
+
 	var current_animation_name = animation_player_node.current_animation
 	var next_animation_name = animation_name if animation_name else "%s%s%s%s%s_%s" % all_names
 	if animation_player_node.has_animation(next_animation_name) :
@@ -109,24 +118,3 @@ func change_animation(animation_name = null) :
 				animation_player_node.seek(round(min(start_time, animation_player_node.current_animation_length)))
 	else:
 		print("Missing animation! %s" % next_animation_name)
-
-func calculate_move_velocity(
-		linear_velocity: Vector2,
-		direction: Vector2,
-		speed: Vector2,
-		is_jump_interrupted: bool
-	) -> Vector2:
-	var out: = linear_velocity
-	out.x = speed.x * direction.x
-	out.y += gravity * get_physics_process_delta_time()
-	if direction.y == -1.0:
-		out.y = speed.y *  direction.y
-	if is_jump_interrupted: 
-		out.y = 0.0
-	return out
-
-
-func _on_AnimationPlayer_animation_finished(anim_name):
-	if anim_name == "ClaireShootDefault_R" or anim_name == "ClaireShootDefault_L":
-		can_fire = true
-		print("animation ends")

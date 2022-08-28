@@ -469,7 +469,8 @@ gravity = 500.0
 [node name="Claire" type="Sprite" parent="."]
 position = Vector2( -1.5, 9 )
 texture = ExtResource( 4 )
-offset = Vector2( 6, -32 )
+offset = Vector2( -6, -32 )
+flip_h = true
 hframes = 2
 
 [node name="ClaireHitbox" type="CollisionShape2D" parent="."]
@@ -491,5 +492,3 @@ position = Vector2( 31, -30 )
 
 [node name="BulletSpawnL" type="Position2D" parent="."]
 position = Vector2( -33, -30 )
-
-[connection signal="animation_finished" from="AnimationPlayer" to="." method="_on_AnimationPlayer_animation_finished"]

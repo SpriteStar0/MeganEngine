@@ -32,12 +32,23 @@ func _process(delta):
 	handle_other_input()
 	change_animation()
 
+# warning-ignore:unused_argument
+#func start_jump(delta):
+	
+
 func jump(delta):
 	if number_of_jumps > 0:
 		movement_state = MovementState.JUMP
 		velocity.y = 0
 		velocity.y -= speed.y
 		number_of_jumps -= 1
+		
+func loop_falling():
+	if is_on_floor():
+		movement_state = MovementState.IDLE
+		change_animation()
+	else:
+		$AnimationPlayer.seek(0.47)
 
 func set_can_fire(enabled):
 	can_fire = enabled
@@ -79,7 +90,8 @@ func shoot_gun():
 func handle_movement():
 	var directionality = 0
 	if Input.is_action_pressed("Move_left") or Input.is_action_pressed("Move_right"):
-		movement_state = MovementState.RUN
+		if movement_state != MovementState.JUMP:
+			movement_state = MovementState.RUN
 		facing_left = Input.is_action_pressed("Move_left")
 		directionality = -1 if facing_left else 1
 	

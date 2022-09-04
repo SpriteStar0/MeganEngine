@@ -5,11 +5,15 @@ const test_projectile = preload("res://Projectile.tscn")
 
 var facing_left = false
 var is_attacking = false
+var is_dashing = false
 var max_number_of_jumps = 3
 var number_of_jumps = max_number_of_jumps
 
+var DASH_FACTOR = 1
+
 #vvvvv Changable Variables vvvvv
 var can_fire = true
+var can_dash = true
 var rate_of_fire = 0.25
 
 enum MovementState {IDLE, RUN, JUMP, DASH, WALL_SLIDE, HOVER}
@@ -31,10 +35,14 @@ func _process(delta):
 	handle_movement()
 	handle_other_input()
 	change_animation()
+	
 
 # warning-ignore:unused_argument
 #func start_jump(delta):
 	
+
+
+
 
 func jump(delta):
 	if number_of_jumps > 0:
@@ -52,6 +60,10 @@ func loop_falling():
 
 func set_can_fire(enabled):
 	can_fire = enabled
+
+func set_can_dash(enabled):
+	is_dashing = not enabled
+	can_dash = enabled
 
 func handle_attacking():
 	if Input.is_action_pressed("Shoot"):
@@ -89,16 +101,35 @@ func shoot_gun():
 #vvvvv Movement Code vvvvv
 func handle_movement():
 	var directionality = 0
+	var dash_factor = 1
 	if Input.is_action_pressed("Move_left") or Input.is_action_pressed("Move_right"):
-		if movement_state != MovementState.JUMP:
+		if movement_state != MovementState.JUMP and movement_state != MovementState.DASH:
 			movement_state = MovementState.RUN
 		facing_left = Input.is_action_pressed("Move_left")
 		directionality = -1 if facing_left else 1
 	
-	if directionality == 0 and movement_state == MovementState.RUN:
+	if directionality == 0 and is_on_floor():
 		movement_state = MovementState.IDLE
 	
 	velocity.x = lerp(velocity.x, speed.x * directionality, 0.25)
+	
+	if Input.is_action_pressed("Dash") and can_dash:
+		if Input.is_action_pressed("Dash"):
+			if can_dash:
+				can_dash = false
+				is_dashing = true
+				dash_factor = 20
+				var dash_timer = Timer.new()
+				dash_timer.one_shot = true
+				dash_timer.wait_time = rate_of_fire
+				dash_timer.connect("timeout", self, "set_can_dash", [true])
+				add_child(dash_timer)
+				dash_timer.start()
+
+	movement_state = MovementState.DASH if is_dashing else movement_state
+
+	velocity.x = lerp(velocity.x, speed.x * directionality * dash_factor, 0.25)
+
 
 func change_animation(animation_name = null) :
 	var animation_player_node = get_node("/root/Test Level Temp/TileMap/Player/AnimationPlayer") # <<<Really Important

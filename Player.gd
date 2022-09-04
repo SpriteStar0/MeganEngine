@@ -48,7 +48,7 @@ func loop_falling():
 		movement_state = MovementState.IDLE
 		change_animation()
 	else:
-		$AnimationPlayer.seek(0.47)
+		$AnimationPlayer.seek(0.4)
 
 func set_can_fire(enabled):
 	can_fire = enabled

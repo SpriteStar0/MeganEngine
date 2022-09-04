@@ -6,7 +6,7 @@ const test_projectile = preload("res://Projectile.tscn")
 var facing_left = false
 var is_attacking = false
 var is_dashing = false
-var max_number_of_jumps = 3
+var max_number_of_jumps = 2
 var number_of_jumps = max_number_of_jumps
 
 var DASH_FACTOR = 1
@@ -15,6 +15,8 @@ var DASH_FACTOR = 1
 var can_fire = true
 var can_dash = true
 var rate_of_fire = 0.25
+var directionality = 0
+var dash_factor = 1
 
 enum MovementState {IDLE, RUN, JUMP, DASH, WALL_SLIDE, HOVER}
 enum WeaponType {DEFAULT, SKILL}
@@ -30,21 +32,25 @@ var skill_type = null
 
 #vvvv UPDATE Code vvvvv
 func _process(delta):
-	handle_special_actions(delta)
+	handle_special_actions()
 	handle_attacking()
 	handle_movement()
 	handle_other_input()
 	change_animation()
 	
+func dash():
+	if can_dash:
+		can_dash = false
+		is_dashing = true
+		dash_factor = 3
+		var dash_timer = Timer.new()
+		dash_timer.one_shot = true
+		dash_timer.wait_time = 0.25
+		dash_timer.connect("timeout", self, "set_can_dash", [true])
+		add_child(dash_timer)
+		dash_timer.start()
 
-# warning-ignore:unused_argument
-#func start_jump(delta):
-	
-
-
-
-
-func jump(delta):
+func jump():
 	if number_of_jumps > 0:
 		movement_state = MovementState.JUMP
 		velocity.y = 0
@@ -52,7 +58,7 @@ func jump(delta):
 		number_of_jumps -= 1
 		
 func loop_falling():
-	if is_on_floor():
+	if is_on_floor() and movement_state == MovementState.JUMP:
 		movement_state = MovementState.IDLE
 		change_animation()
 	else:
@@ -63,6 +69,7 @@ func set_can_fire(enabled):
 
 func set_can_dash(enabled):
 	is_dashing = not enabled
+	dash_factor = 1
 	can_dash = enabled
 
 func handle_attacking():
@@ -83,13 +90,13 @@ func handle_other_input():
 	if Input.is_action_just_pressed("Quit"):
 		get_tree().quit()
 		
-func handle_special_actions(delta):
+func handle_special_actions():
 	if is_on_floor():
 		if movement_state == MovementState.JUMP:
 			movement_state = MovementState.IDLE
 		number_of_jumps = max_number_of_jumps
 	if Input.is_action_just_pressed("Jump"):
-		jump(delta)
+		jump()
 
 func shoot_gun():
 	var spawn_point = $BulletSpawnL if facing_left else $BulletSpawnR
@@ -100,35 +107,33 @@ func shoot_gun():
 
 #vvvvv Movement Code vvvvv
 func handle_movement():
-	var directionality = 0
-	var dash_factor = 1
 	if Input.is_action_pressed("Move_left") or Input.is_action_pressed("Move_right"):
-		if movement_state != MovementState.JUMP and movement_state != MovementState.DASH:
-			movement_state = MovementState.RUN
 		facing_left = Input.is_action_pressed("Move_left")
+		if not is_dashing:
+			if is_on_floor():
+				movement_state = MovementState.RUN
+			else:
+				movement_state = MovementState.JUMP
 		directionality = -1 if facing_left else 1
-	
-	if directionality == 0 and is_on_floor():
-		movement_state = MovementState.IDLE
-	
-	velocity.x = lerp(velocity.x, speed.x * directionality, 0.25)
-	
-	if Input.is_action_pressed("Dash") and can_dash:
-		if Input.is_action_pressed("Dash"):
-			if can_dash:
-				can_dash = false
-				is_dashing = true
-				dash_factor = 20
-				var dash_timer = Timer.new()
-				dash_timer.one_shot = true
-				dash_timer.wait_time = rate_of_fire
-				dash_timer.connect("timeout", self, "set_can_dash", [true])
-				add_child(dash_timer)
-				dash_timer.start()
+	else:
+		directionality = 0
+
+	if Input.is_action_just_pressed("Dash"):
+		dash()
+
+	if Input.is_action_just_pressed("Jump"):
+		jump()
+
+	if is_on_floor():
+		if directionality == 0:
+			movement_state = MovementState.IDLE
+			number_of_jumps = max_number_of_jumps
 
 	movement_state = MovementState.DASH if is_dashing else movement_state
 
 	velocity.x = lerp(velocity.x, speed.x * directionality * dash_factor, 0.25)
+	
+
 
 
 func change_animation(animation_name = null) :

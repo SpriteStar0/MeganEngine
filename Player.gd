@@ -8,6 +8,8 @@ extends Actor
 # not change at run time (when the game is active).
 export var RATE_OF_FIRE = 0.25
 export var DASH_FACTOR = 12
+export var DASH_LENGTH = 0.2
+export var DASH_COOLDOWN = 1
 export var MAX_NUMBER_OF_JUMPS = 2
 export var ENTITY_NAME = "Claire"
 # This is a PackedScene that we will instantiate to make a "bullet". 
@@ -197,14 +199,14 @@ func dash():
 		# gravity, they could just skip stages.
 		var dash_timer = Timer.new()
 		dash_timer.one_shot = true
-		dash_timer.wait_time = 0.2
+		dash_timer.wait_time = DASH_LENGTH
 		dash_timer.connect("timeout", self, "end_dash")
 		add_child(dash_timer)
 		dash_timer.start()
 		# Dash cooldown, as mentioned above.
 		var cooldown_timer = Timer.new()
 		cooldown_timer.one_shot = true
-		cooldown_timer.wait_time = 1
+		cooldown_timer.wait_time = DASH_COOLDOWN
 		cooldown_timer.connect("timeout", self, "set_can_dash", [true])
 		add_child(cooldown_timer)
 		cooldown_timer.start()

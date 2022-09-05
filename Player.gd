@@ -9,7 +9,7 @@ var is_dashing = false
 var max_number_of_jumps = 2
 var number_of_jumps = max_number_of_jumps
 
-var DASH_FACTOR = 1
+var DASH_FACTOR = 12
 
 #vvvvv Changable Variables vvvvv
 var can_fire = true
@@ -31,7 +31,7 @@ var weapon_type = WeaponType.DEFAULT
 var skill_type = null
 
 #vvvv UPDATE Code vvvvv
-func _process(delta):
+func _process(_delta):
 	handle_special_actions()
 	handle_attacking()
 	handle_movement()
@@ -42,13 +42,21 @@ func dash():
 	if can_dash:
 		can_dash = false
 		is_dashing = true
-		dash_factor = 3
+		velocity.x += directionality * (speed.x * DASH_FACTOR)
+		velocity.y = 0
+		self.is_affected_by_gravity = false
 		var dash_timer = Timer.new()
 		dash_timer.one_shot = true
-		dash_timer.wait_time = 0.25
-		dash_timer.connect("timeout", self, "set_can_dash", [true])
+		dash_timer.wait_time = 0.2
+		dash_timer.connect("timeout", self, "end_dash")
 		add_child(dash_timer)
 		dash_timer.start()
+		var cooldown_timer = Timer.new()
+		cooldown_timer.one_shot = true
+		cooldown_timer.wait_time = 1
+		cooldown_timer.connect("timeout", self, "set_can_dash", [true])
+		add_child(cooldown_timer)
+		cooldown_timer.start()
 
 func jump():
 	if number_of_jumps > 0:
@@ -68,9 +76,11 @@ func set_can_fire(enabled):
 	can_fire = enabled
 
 func set_can_dash(enabled):
-	is_dashing = not enabled
-	dash_factor = 1
 	can_dash = enabled
+
+func end_dash():
+	is_dashing = false
+	self.is_affected_by_gravity = true
 
 func handle_attacking():
 	if Input.is_action_pressed("Shoot"):
@@ -91,12 +101,7 @@ func handle_other_input():
 		get_tree().quit()
 		
 func handle_special_actions():
-	if is_on_floor():
-		if movement_state == MovementState.JUMP:
-			movement_state = MovementState.IDLE
-		number_of_jumps = max_number_of_jumps
-	if Input.is_action_just_pressed("Jump"):
-		jump()
+	pass
 
 func shoot_gun():
 	var spawn_point = $BulletSpawnL if facing_left else $BulletSpawnR
@@ -108,8 +113,8 @@ func shoot_gun():
 #vvvvv Movement Code vvvvv
 func handle_movement():
 	if Input.is_action_pressed("Move_left") or Input.is_action_pressed("Move_right"):
-		facing_left = Input.is_action_pressed("Move_left")
 		if not is_dashing:
+			facing_left = Input.is_action_pressed("Move_left")
 			if is_on_floor():
 				movement_state = MovementState.RUN
 			else:
@@ -118,20 +123,22 @@ func handle_movement():
 	else:
 		directionality = 0
 
-	if Input.is_action_just_pressed("Dash"):
+	if Input.is_action_pressed("Dash"):
+		directionality = -1 if facing_left else 1
 		dash()
 
 	if Input.is_action_just_pressed("Jump"):
 		jump()
-
-	if is_on_floor():
+	elif is_on_floor():
 		if directionality == 0:
 			movement_state = MovementState.IDLE
-			number_of_jumps = max_number_of_jumps
+		number_of_jumps = max_number_of_jumps
+	elif not is_on_floor():
+		movement_state = MovementState.JUMP
 
 	movement_state = MovementState.DASH if is_dashing else movement_state
 
-	velocity.x = lerp(velocity.x, speed.x * directionality * dash_factor, 0.25)
+	velocity.x = lerp(velocity.x, speed.x * directionality, 0.25)
 	
 
 

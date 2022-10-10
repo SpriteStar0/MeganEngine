@@ -11,6 +11,7 @@ export var DASH_FACTOR = 12
 export var DASH_LENGTH = 0.2
 export var DASH_COOLDOWN = 1
 export var MAX_NUMBER_OF_JUMPS = 2
+export var SLIDE_SPEED = 75.0
 export var ENTITY_NAME = "Claire"
 # This is a PackedScene that we will instantiate to make a "bullet". 
 const normal_projectile = preload("res://Projectile.tscn")
@@ -21,6 +22,8 @@ const normal_projectile = preload("res://Projectile.tscn")
 # account.
 var can_attack = true
 var is_attacking = false
+var is_stealing = false
+var can_steal = true
 var can_dash = true
 var is_dashing = false
 # As you already know, directionality is a special case but it follows the same
@@ -30,6 +33,10 @@ var facing_left = false
 # These variables are all changeable and represent the state of certain actions
 # involving the player.
 var number_of_jumps = MAX_NUMBER_OF_JUMPS
+# Variable for Wall Sliding. Represents if you are sliding down a wall. 
+var is_wallsliding = false
+#For switching on if a weapon is stole/destroying an enemy with STEAL attack
+var stolen_weapon = false
 # Each one of these groups represent a number of states, their corresponding
 # string literal, and a default state. These are used to figure out the correct
 # animation based on which booleans are true or not. The alternative method is
@@ -37,6 +44,8 @@ var number_of_jumps = MAX_NUMBER_OF_JUMPS
 # still require you to list out all the states and all the animations in a way
 # that seemed overkill for what we need. However, in the event we just can't
 # figure out how to make something happen, that would be the approach to take.
+
+
 enum MovementState {IDLE, RUN, JUMP, DASH, WALL_SLIDE, HOVER}
 var movement_names =  ["Idle", "Run", "Jump", "Dash", "Wallslide", "Hover"]
 var movement_state = MovementState.IDLE
@@ -57,14 +66,17 @@ func _process(_delta):
 	handle_special_actions()
 	# Self-explanatory.
 	handle_attacking()
+	handle_stealing()
 	handle_movement()
 	# This function is for handling global or game-level inputs like "quit".
 	handle_other_input()
+	#Wall Slide check, using Raycasts (L and R) to detect walls
+	wall_slide_check()
 	# The very last thing we call is the change_animation() function which
 	# begins the process of determining if we need to change the animation
 	# based on the booleans that are set. 
 	change_animation()
-	
+
 # Nothing in here at the moment.
 func handle_special_actions():
 	pass
@@ -73,7 +85,7 @@ func handle_special_actions():
 func handle_attacking():
 	# TODO: Change the name of this action to "Attack" since there is no
 	# guarantee that every weapon is going to be a gun/rifle/cannon.
-	if Input.is_action_pressed("Shoot"):
+	if Input.is_action_pressed("Attack"):
 		is_attacking = true
 		if can_attack:
 			can_attack = false
@@ -91,6 +103,27 @@ func handle_attacking():
 			attack_timer.start()
 	else:
 		is_attacking = false
+		
+func handle_stealing():
+	if Input.is_action_pressed("Steal"):
+		is_stealing = true
+		#Have a way to pull the attack code from elsewhere
+		if can_steal:
+			can_steal = false
+			#Timer to have the animation play out fully but only one tap of button
+			var steal_timer = Timer.new()
+			steal_timer.one_shot = true
+			steal_timer.wait_time = 0.7
+			steal_timer.connect("timeout", self, "set_is_stealing", [false])
+			add_child(steal_timer)
+			steal_timer.start()
+			
+func set_is_stealing(disabled):
+	is_stealing = disabled
+	can_steal = !disabled
+
+func set_can_steal(enabled):
+	can_steal = enabled
 		
 func handle_movement():
 	# The first thing we want to check is if we're pressing "Move_left" or 
@@ -136,6 +169,18 @@ func handle_movement():
 	# Finally, we do the calculations to find the new X-velocity.
 	velocity.x = lerp(velocity.x, speed.x * directionality, 0.25)
 	
+	
+	#Staring WallSlide code here
+	#Note - Have small hop when button press toward wall
+func wall_slide_check():
+	if !is_on_floor() and is_on_wall():
+		movement_state = MovementState.WALL_SLIDE
+		is_wallsliding = true
+		number_of_jumps = number_of_jumps + 1
+		velocity.y = clamp(velocity.y, 0.0, SLIDE_SPEED)
+	else:
+		is_wallsliding = false
+		
 # Self-explanatory.
 func handle_other_input():
 	if Input.is_action_just_pressed("Quit"):
@@ -148,6 +193,7 @@ func change_animation(animation_name = null):
 	# have.
 	var movement_name = movement_names[movement_state]
 	var attack_name = "Attack" if is_attacking else ""
+	var mechanic_name = "Steal" if is_stealing else ""
 	var weapon_name = weapon_names[weapon_type]
 	var skill_name = "" if skill_type == null else skill_names[skill_type]
 	# We determine the direction based on if we're facing left.
@@ -157,6 +203,7 @@ func change_animation(animation_name = null):
 		ENTITY_NAME,
 		movement_name,
 		attack_name,
+		mechanic_name,
 		weapon_name,
 		skill_name,
 		direction_name
@@ -164,7 +211,7 @@ func change_animation(animation_name = null):
 	
 	var current_animation_name = animation_player_node.current_animation
 	# "The next animation will be <this> if it isn't <this> already."
-	var next_animation_name = animation_name if animation_name else "%s%s%s%s%s_%s" % all_names
+	var next_animation_name = animation_name if animation_name else "%s%s%s%s%s%s_%s" % all_names
 	# Do we even have that animation?
 	if animation_player_node.has_animation(next_animation_name):
 		# "We do and we're already in it."
@@ -243,7 +290,14 @@ func end_dash():
 
 func shoot_gun():
 	var spawn_point = $BulletSpawnL if facing_left else $BulletSpawnR
+	var multiplier = -1 if is_wallsliding else 1
 	var normal_projectile_instance = normal_projectile.instance()
-	normal_projectile_instance.direction = -1 if facing_left else 1
+	normal_projectile_instance.direction = -1 * multiplier if facing_left else 1 * multiplier
+	if is_wallsliding:
+		spawn_point = $BulletSpawnR if facing_left else $BulletSpawnL
+#		normal_projectile_instance.direction = 1 if facing_left else -1
+#		normal_projectile_instance.position = spawn_point.global_position
+#		get_parent().add_child(normal_projectile_instance)
 	normal_projectile_instance.position = spawn_point.global_position
 	get_parent().add_child(normal_projectile_instance)
+

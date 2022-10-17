@@ -84,6 +84,7 @@ func _process(_delta):
 func handle_special_actions():
 	if Input.is_action_pressed("Steal"):
 		is_stealing = true
+		# Halt all motion and reset to IDLE state.
 		velocity = Vector2.ZERO
 		movement_state = MovementState.IDLE
 		change_animation()

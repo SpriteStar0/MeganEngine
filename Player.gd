@@ -62,6 +62,8 @@ var skill_type = null
 # it simply calls all of these handling functions and lets them do the heavy
 # lifting, so to speak. NOTE: The order of these functions matters.
 func _process(_delta):
+	# This function is for handling global or game-level inputs like "quit".
+	handle_other_input()
 	# This function should handle any special/contextual actions the player
 	# can take.
 	handle_special_actions()
@@ -74,8 +76,6 @@ func _process(_delta):
 		handle_movement()
 		#Wall Slide check, using Raycasts (L and R) to detect walls
 		wall_slide_check()
-		# This function is for handling global or game-level inputs like "quit".
-		handle_other_input()
 		# The very last thing we call is the change_animation() function which
 		# begins the process of determining if we need to change the animation
 		# based on the booleans that are set. 

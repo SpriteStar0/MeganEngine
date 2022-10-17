@@ -57,29 +57,46 @@ var weapon_type = WeaponType.DEFAULT
 enum SkillType {SKILL_1, SKILL_2, SKILL_3}
 var skill_names = ["Unga", "Bunga", "E"]
 var skill_type = null
+
 # This is the _process() function that is specific to the player. At the moment,
 # it simply calls all of these handling functions and lets them do the heavy
 # lifting, so to speak. NOTE: The order of these functions matters.
 func _process(_delta):
+	# This function is for handling global or game-level inputs like "quit".
+	handle_other_input()
 	# This function should handle any special/contextual actions the player
 	# can take.
 	handle_special_actions()
-	# Self-explanatory.
-	handle_attacking()
-	handle_stealing()
-	handle_movement()
-	# This function is for handling global or game-level inputs like "quit".
-	handle_other_input()
-	#Wall Slide check, using Raycasts (L and R) to detect walls
-	wall_slide_check()
-	# The very last thing we call is the change_animation() function which
-	# begins the process of determining if we need to change the animation
-	# based on the booleans that are set. 
-	change_animation()
+	# The array with is_stealing should contain all booleans that
+	# want to block all other functions, giving the illusion of 
+	# "animation locking".
+	if not [is_stealing].has(true):
+		# Self-explanatory.
+		handle_attacking()
+		handle_movement()
+		#Wall Slide check, using Raycasts (L and R) to detect walls
+		wall_slide_check()
+		# The very last thing we call is the change_animation() function which
+		# begins the process of determining if we need to change the animation
+		# based on the booleans that are set. 
+		change_animation()
 
-# Nothing in here at the moment.
 func handle_special_actions():
-	pass
+	if Input.is_action_pressed("Steal"):
+		is_stealing = true
+		velocity = Vector2.ZERO
+		movement_state = MovementState.IDLE
+		change_animation()
+		#Have a way to pull the attack code from elsewhere
+		if can_steal:
+			can_steal = false
+			#Timer to have the animation play out fully but only one tap of button
+			var steal_timer = Timer.new()
+			steal_timer.one_shot = true
+			steal_timer.wait_time = 0.7
+			steal_timer.connect("timeout", self, "set_is_stealing", [false])
+			add_child(steal_timer)
+			steal_timer.start()
 	
 # Self-explanatory.
 func handle_attacking():
@@ -104,20 +121,7 @@ func handle_attacking():
 	else:
 		is_attacking = false
 		
-func handle_stealing():
-	if Input.is_action_pressed("Steal"):
-		is_stealing = true
-		#Have a way to pull the attack code from elsewhere
-		if can_steal:
-			can_steal = false
-			#Timer to have the animation play out fully but only one tap of button
-			var steal_timer = Timer.new()
-			steal_timer.one_shot = true
-			steal_timer.wait_time = 0.7
-			steal_timer.connect("timeout", self, "set_is_stealing", [false])
-			add_child(steal_timer)
-			steal_timer.start()
-			
+
 func set_is_stealing(disabled):
 	is_stealing = disabled
 	can_steal = !disabled

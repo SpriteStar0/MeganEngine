@@ -36,6 +36,10 @@ config/name="MeganEngine"
 run/main_scene="res://Levels/Test Level Temp.tscn"
 config/icon="res://icon.png"
 
+[autoload]
+
+Hud="*res://HUD.tscn"
+
 [display]
 
 window/size/always_on_top=true

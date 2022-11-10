@@ -3,6 +3,10 @@
 # the most.
 
 extends Actor
+
+signal health_updated(health)
+signal killed()
+
 # These are constants and by convention, they are capitalized and exported
 # so the editor can see and change the values. Generally, these values will
 # not change at run time (when the game is active).
@@ -45,6 +49,24 @@ var stolen_weapon = false
 # that seemed overkill for what we need. However, in the event we just can't
 # figure out how to make something happen, that would be the approach to take.
 
+
+onready var health = max_health setget _set_health
+export (float) var max_health = 100
+
+func damage(amount):
+	_set_health(health - amount)
+
+func kill():
+	pass
+
+func _set_health(value):
+	var prev_health = health
+	health = clamp(value, 0, max_health)
+	if health != prev_health:
+		emit_signal("health_updated", health)
+		if health == 0:
+			kill()
+			emit_signal("killed")
 
 enum MovementState {IDLE, RUN, JUMP, DASH, WALL_SLIDE, HOVER}
 var movement_names =  ["Idle", "Run", "Jump", "Dash", "Wallslide", "Hover"]
@@ -97,6 +119,7 @@ func handle_special_actions():
 			steal_timer.connect("timeout", self, "set_is_stealing", [false])
 			add_child(steal_timer)
 			steal_timer.start()
+			weapon_detection()
 	
 # Self-explanatory.
 func handle_attacking():
@@ -128,6 +151,14 @@ func set_is_stealing(disabled):
 
 func set_can_steal(enabled):
 	can_steal = enabled
+	
+	
+
+func weapon_detection():
+	$Temp.weapon_steal_value
+	$Temp.enemy_weapon_value($jPHurtbox.varhitbox.get_parent().weapon_enemy_value)
+	
+
 		
 func handle_movement():
 	# The first thing we want to check is if we're pressing "Move_left" or 

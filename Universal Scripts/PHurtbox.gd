@@ -1,6 +1,9 @@
 class_name PHurtbox
 extends Area2D
 
+var varhitbox
+
+
 func _init() -> void:
 	collision_layer = 0
 	collision_mask = 16
@@ -11,6 +14,7 @@ func _ready() -> void:
 
 func _on_area_entered(hitbox: PHitbox) -> void:
 	print("Hurtbox")
+	varhitbox = hitbox
 	if hitbox == null:
 		
 		return
@@ -20,3 +24,4 @@ func _on_area_entered(hitbox: PHitbox) -> void:
 		owner.take_damage(hitbox.damage)
 		#owner.queue_free()
 		hitbox.owner.queue_free()
+

@@ -23,11 +23,17 @@ _global_script_classes=[ {
 "class": "PHurtbox",
 "language": "GDScript",
 "path": "res://Universal Scripts/PHurtbox.gd"
+}, {
+"base": "Area2D",
+"class": "StealHitBox",
+"language": "GDScript",
+"path": "res://Universal Scripts/StealHitBox.gd"
 } ]
 _global_script_class_icons={
 "Actor": "",
 "PHitbox": "",
-"PHurtbox": ""
+"PHurtbox": "",
+"StealHitBox": ""
 }
 
 [application]

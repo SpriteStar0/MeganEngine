@@ -119,7 +119,7 @@ func handle_special_actions():
 			steal_timer.connect("timeout", self, "set_is_stealing", [false])
 			add_child(steal_timer)
 			steal_timer.start()
-			weapon_detection()
+			#weapon_detection() #we can't run this function from here as it will run to early Before the Animation have enabled the area2d
 	
 # Self-explanatory.
 func handle_attacking():
@@ -155,11 +155,8 @@ func set_can_steal(enabled):
 	
 
 func weapon_detection():
-	$Temp.weapon_steal_value
-	$Temp.enemy_weapon_value($jPHurtbox.varhitbox.get_parent().weapon_enemy_value)
-	
+	$Temp.enemy_weapon_value($"Claire/PHitbox".varhitbox.owner.weapon_enemy_value)
 
-		
 func handle_movement():
 	# The first thing we want to check is if we're pressing "Move_left" or 
 	# "Move_right". That will be the first thing to determine directionality.

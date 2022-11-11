@@ -4,7 +4,7 @@ var velocity = Vector2()
 
 func _ready():
 	pass # Replace with function body.
-
+	
 func _process(delta):
 	velocity.y += 20
 
